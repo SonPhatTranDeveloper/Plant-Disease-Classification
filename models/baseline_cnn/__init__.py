@@ -2,6 +2,9 @@
 Author: Son Phat Tran
 This file defines a simple model used for plant disease classification (using CNN)
 """
+import time
+from tqdm import tqdm
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -69,81 +72,138 @@ class CNN(nn.Module):
         return x
 
 
-def train_model(model, train_loader, criterion, optimizer, device):
-    """
-    Train the model
-    :param model: CNN model
-    :param train_loader: data loader of the training set
-    :param criterion: criterion (loss function)
-    :param optimizer: optimizer used for training
-    :param device: device used for training (cuda or cpu)
-    :return: None
-    """
-    # Place the model in training mode
+def train_epoch(model, train_loader, criterion, optimizer, device):
     model.train()
+    running_loss = 0.0
+    correct = 0
+    total = 0
 
-    # Iterate through batches
-    for batch_idx, (data, target) in enumerate(train_loader):
-        # Convert to device (copy to CUDA)
-        data, target = data.to(device), target.to(device)
+    with tqdm(train_loader, desc='Training') as pbar:
+        for data, target in pbar:
+            data, target = data.to(device), target.to(device)
 
-        # Clear out the previous gradient
-        optimizer.zero_grad()
+            optimizer.zero_grad()
+            outputs = model(data)
+            loss = criterion(outputs, target)
+            loss.backward()
+            optimizer.step()
 
-        # Calculate loss
-        output = model(data)
-        loss = criterion(output, target)
+            running_loss += loss.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += target.size(0)
+            correct += (predicted == target).sum().item()
 
-        # Backprop
-        loss.backward()
-        optimizer.step()
+            # Update progress bar
+            pbar.set_postfix({
+                'loss': f'{running_loss / total:.4f}',
+                'acc': f'{100. * correct / total:.2f}%'
+            })
 
-        # If batch size reach 100, 200, ... -> Perform evaluation
-        if batch_idx % 100 == 0:
-            print(f'Training Loss: {loss.item():.4f}')
+    epoch_loss = running_loss / len(train_loader)
+    epoch_acc = 100. * correct / total
+    return epoch_loss, epoch_acc
 
 
-def test_model(model, test_loader, device):
-    """
-    Test the model on test data
-    :param model: CNN model
-    :param test_loader: dataloader for the test data
-    :param device: device for training (cuda or cpu)
-    :return:
-    """
-    # Put the model into evaluation mode
+def validate(model, val_loader, criterion, device):
     model.eval()
-
-    # Calculate top-1 and top-5 accuracy
+    running_loss = 0.0
     top1_correct = 0
     top5_correct = 0
     total = 0
 
     with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            outputs = model(data)
+        with tqdm(val_loader, desc='Validation') as pbar:
+            for data, target in pbar:
+                data, target = data.to(device), target.to(device)
+                outputs = model(data)
+                loss = criterion(outputs, target)
 
-            # Calculate Top-1 accuracy
-            _, predicted = torch.max(outputs.data, 1)
-            top1_correct += (predicted == target).sum().item()
+                running_loss += loss.item()
 
-            # Calculate Top-5 accuracy
-            _, top5_predicted = torch.topk(outputs.data, k=5, dim=1)
-            for i, label in enumerate(target):
-                if label in top5_predicted[i]:
-                    top5_correct += 1
+                # Top-1 accuracy
+                _, predicted = torch.max(outputs.data, 1)
+                top1_correct += (predicted == target).sum().item()
 
-            total += target.size(0)
+                # Top-5 accuracy
+                _, top5_predicted = torch.topk(outputs.data, k=5, dim=1)
+                for i, label in enumerate(target):
+                    if label in top5_predicted[i]:
+                        top5_correct += 1
 
-    top1_accuracy = 100 * top1_correct / total
-    top5_accuracy = 100 * top5_correct / total
+                total += target.size(0)
 
-    print(f'Test Accuracy:')
-    print(f'Top-1: {top1_accuracy:.2f}%')
-    print(f'Top-5: {top5_accuracy:.2f}%')
+                # Update progress bar
+                pbar.set_postfix({
+                    'loss': f'{running_loss / total:.4f}',
+                    'top1': f'{100. * top1_correct / total:.2f}%',
+                    'top5': f'{100. * top5_correct / total:.2f}%'
+                })
 
-    return top1_accuracy, top5_accuracy
+    val_loss = running_loss / len(val_loader)
+    top1_acc = 100. * top1_correct / total
+    top5_acc = 100. * top5_correct / total
+    return val_loss, top1_acc, top5_acc
+
+
+def train_model(model, train_loader, val_loader, criterion, optimizer, device,
+                num_epochs=10, save_path='best_model.pth'):
+    best_val_acc = 0.0
+    train_losses = []
+    train_accs = []
+    val_losses = []
+    val_top1_accs = []
+    val_top5_accs = []
+
+    print(f"Starting training on device: {device}")
+    print(f"Number of epochs: {num_epochs}")
+
+    for epoch in range(num_epochs):
+        start_time = time.time()
+
+        print(f'\nEpoch {epoch + 1}/{num_epochs}')
+        print('-' * 60)
+
+        # Train
+        train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
+        train_losses.append(train_loss)
+        train_accs.append(train_acc)
+
+        # Validate
+        val_loss, val_top1_acc, val_top5_acc = validate(model, val_loader, criterion, device)
+        val_losses.append(val_loss)
+        val_top1_accs.append(val_top1_acc)
+        val_top5_accs.append(val_top5_acc)
+
+        epoch_time = time.time() - start_time
+
+        # Print epoch results
+        print(f'\nEpoch Summary:')
+        print(f'Time: {epoch_time:.2f}s')
+        print(f'Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%')
+        print(f'Val Loss: {val_loss:.4f}, Val Top-1 Acc: {val_top1_acc:.2f}%, Val Top-5 Acc: {val_top5_acc:.2f}%')
+
+        # Save best model
+        if val_top1_acc > best_val_acc:
+            best_val_acc = val_top1_acc
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'best_val_acc': best_val_acc,
+            }, save_path)
+            print(f'Saved new best model with validation accuracy: {best_val_acc:.2f}%')
+
+    print('\nTraining completed!')
+    print(f'Best validation accuracy: {best_val_acc:.2f}%')
+
+    return {
+        'train_losses': train_losses,
+        'train_accs': train_accs,
+        'val_losses': val_losses,
+        'val_top1_accs': val_top1_accs,
+        'val_top5_accs': val_top5_accs,
+        'best_val_acc': best_val_acc
+    }
 
 
 def initialize_training(num_classes, learning_rate=0.001):

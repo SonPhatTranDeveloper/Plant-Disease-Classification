@@ -24,9 +24,10 @@ if __name__ == "__main__":
     train_model(
         model,
         train_loader,
+        val_loader,
         criterion,
         optimizer,
-        device="cuda" if torch.cuda.is_available() else "cpu"
+        device="cuda" if torch.cuda.is_available() else "cpu",
+        num_epochs=10,
+        save_path='best_model.pth'
     )
-
-
