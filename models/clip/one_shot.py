@@ -11,7 +11,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from utils.labelling import convert_label, MAPPING
+from utils.labelling import convert_label, MAPPING_WITH_PREFIX
 
 
 def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     dataset = load_one_shot_dataset("raw_dataset/small/test")
     image_full_paths = [item[0] for item in dataset]
     true_labels = [item[1] for item in dataset]
-    cand_labels = [MAPPING[label] for label in MAPPING]
+    cand_labels = [MAPPING_WITH_PREFIX[label] for label in MAPPING_WITH_PREFIX]
 
     # Load the images
     loaded_images = load_images(image_full_paths)

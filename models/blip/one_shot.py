@@ -11,7 +11,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from utils.labelling import convert_label, MAPPING
+from utils.labelling import convert_label, MAPPING_WITH_PREFIX
 
 
 def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
@@ -46,7 +46,7 @@ def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
         all_images = os.listdir(disease_path)
 
         for image in all_images:
-            clip_label = convert_label(disease)
+            clip_label = convert_label(disease, with_prefix=False)
             full_image_path = os.path.join(disease_path, image)
             result.append((full_image_path, clip_label))
 
@@ -85,7 +85,7 @@ def load_images(image_paths: List[str]) -> List[Image.Image]:
 
 
 class BLIPZeroShotClassifier:
-    def __init__(self, model_name: str = "Salesforce/blip-image-captioning-base"):
+    def __init__(self, model_name: str = "Salesforce/blip-image-captioning-large"):
         """
         Initialize the CLIP zero-shot classifier.
 
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     dataset = load_one_shot_dataset("raw_dataset/small/test")
     image_full_paths = [item[0] for item in dataset]
     true_labels = [item[1] for item in dataset]
-    cand_labels = [MAPPING[label] for label in MAPPING]
+    cand_labels = [MAPPING_WITH_PREFIX[label] for label in MAPPING_WITH_PREFIX]
 
     # Load the images
     loaded_images = load_images(image_full_paths)
