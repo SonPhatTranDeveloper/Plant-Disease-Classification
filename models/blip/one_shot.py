@@ -2,14 +2,18 @@
 Author: Son Phat Tran
 This code contains the logic for one-shot classification using BLIP
 """
+from typing import List
+
 import torch
 import torch.nn.functional as F
+from torch.utils.data import Dataset
 
-from PIL import Image
 from transformers import BlipProcessor, BlipForImageTextRetrieval
 from torchvision import datasets, transforms
 
 from tqdm import tqdm
+from pathlib import Path
+from PIL import Image
 
 from utils.labelling import MAPPING, convert_label
 
@@ -20,17 +24,28 @@ class BLIPZeroShotClassifier:
         self.processor = BlipProcessor.from_pretrained(model_name)
         self.model = BlipForImageTextRetrieval.from_pretrained(model_name).to(self.device)
 
-    def prepare_text_inputs(self, categories):
-        """Prepare text inputs for all categories."""
+    def prepare_text_inputs(self, categories: List[str]):
+        """
+        Prepare text inputs for all categories.
+
+        Args:
+            categories: List of candidate labels
+        """
         text_inputs = []
         for category in categories:
-            # Create a template prompt for each category
             encoded = self.processor(text=convert_label(category), return_tensors="pt", padding=True)
             text_inputs.append(encoded)
         return text_inputs
 
-    def classify_image(self, image_path, categories, return_top_k=1):
-        """Perform zero-shot classification on a single image."""
+    def classify_image(self, image_path: str, categories: List[str], return_top_k=1):
+        """
+        Perform zero-shot classification on a single image.
+
+        Args:
+            image_path: Path to the image
+            categories: candidate labels
+            return_top_k: how many candidate labels to return
+        """
         # Load and preprocess image
         image = Image.open(image_path).convert('RGB')
         image_inputs = self.processor(images=image, return_tensors="pt").to(self.device)
@@ -55,8 +70,16 @@ class BLIPZeroShotClassifier:
         return predictions
 
 
-def evaluate_zero_shot(classifier, data_dir, categories, batch_size=32):
-    """Evaluate the zero-shot classifier on a dataset."""
+def evaluate_zero_shot(blip_classifier, dataset_path, categories, batch_size=32):
+    """
+    Evaluate the zero-shot classifier on a dataset.
+
+    Args:
+        blip_classifier: BLIP classifier
+        dataset_path: directory of the dataset
+        categories: candidate labels
+        batch_size: how many images to process at a time
+    """
     # Setup data transforms
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -64,7 +87,7 @@ def evaluate_zero_shot(classifier, data_dir, categories, batch_size=32):
     ])
 
     # Load dataset
-    dataset = datasets.ImageFolder(data_dir, transform=transform)
+    dataset = datasets.ImageFolder(dataset_path, transform=transform)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     top1_correct = 0
@@ -76,8 +99,12 @@ def evaluate_zero_shot(classifier, data_dir, categories, batch_size=32):
             # Convert tensor to PIL Image
             img_pil = transforms.ToPILImage()(img)
 
+            # Save temporary image
+            temp_path = "temp.jpg"
+            img_pil.save(temp_path)
+
             # Get predictions
-            predictions = classifier.classify_image(img_pil, categories, return_top_k=5)
+            predictions = blip_classifier.classify_image(temp_path, categories, return_top_k=5)
 
             # Get ground truth category
             true_category = categories[label]
@@ -92,6 +119,9 @@ def evaluate_zero_shot(classifier, data_dir, categories, batch_size=32):
                 top5_correct += 1
 
             total += 1
+
+    # Clean up temporary file
+    Path("temp.jpg").unlink(missing_ok=True)
 
     # Calculate accuracies
     top1_accuracy = top1_correct / total * 100
