@@ -33,7 +33,7 @@ class BLIPZeroShotClassifier:
         """Perform zero-shot classification on a single image."""
         # Load and preprocess image
         image = Image.open(image_path).convert('RGB')
-        image_inputs = self.processor(images=image, return_tensors="pt")
+        image_inputs = self.processor(images=image, return_tensors="pt").to(self.device)
 
         # Prepare text inputs for all categories
         scores = []
