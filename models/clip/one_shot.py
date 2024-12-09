@@ -3,7 +3,7 @@ Author: Son Phat Tran
 This file contains the code for CLIP-2 zero-shot classification
 """
 import os
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import torch
 from transformers import CLIPProcessor, CLIPModel
@@ -185,7 +185,6 @@ class CLIPZeroShotClassifier:
         all_results = []
 
         # Create progress bar for batch processing
-        num_batches = (len(images) + batch_size - 1) // batch_size
         pbar = tqdm(total=len(images), desc="Processing images", unit="image")
 
         # Process images in batches
@@ -222,9 +221,9 @@ class CLIPZeroShotClassifier:
                            true_labels: List[str],
                            candidate_labels: List[str],
                            hypothesis_template: str = "a photo of a {}",
-                           batch_size: int = 32) -> float:
+                           batch_size: int = 32) -> Dict[str, float]:
         """
-        Calculate classification accuracy on a batch of images.
+        Calculate top-1 and top-5 accuracy on a batch of images.
 
         Args:
             images (List[PIL.Image]): List of input images
@@ -234,20 +233,48 @@ class CLIPZeroShotClassifier:
             batch_size (int): Size of batches for processing
 
         Returns:
-            float: Classification accuracy (0-1)
+            Dict[str, float]: Dictionary containing top-1 and top-5 accuracy scores
         """
         if len(images) != len(true_labels):
             raise ValueError("Number of images must match number of labels")
 
+        if len(candidate_labels) < 5:
+            raise ValueError("Need at least 5 candidate labels for top-5 accuracy")
+
+        print("Calculating accuracy...")
         # Get predictions
         predictions = self.batch_classify(images, candidate_labels, hypothesis_template, batch_size)
-        predicted_labels = [result[0][0] for result in predictions]  # Get top prediction for each image
 
-        # Calculate accuracy
-        correct_predictions = sum(1 for true, pred in zip(true_labels, predicted_labels) if true == pred)
-        acc = correct_predictions / len(true_labels)
+        # Calculate top-1 accuracy
+        top1_correct = sum(1 for pred, true_label in zip(predictions, true_labels)
+                           if pred[0][0] == true_label)
+        top1_accuracy = top1_correct / len(true_labels)
 
-        return acc
+        # Calculate top-5 accuracy
+        top5_correct = sum(1 for pred, true_label in zip(predictions, true_labels)
+                           if true_label in [p[0] for p in pred[:5]])
+        top5_accuracy = top5_correct / len(true_labels)
+
+        # Calculate per-image accuracies for detailed analysis
+        detailed_results = []
+        for i, (pred, true_label) in enumerate(zip(predictions, true_labels)):
+            top_5_predictions = [p[0] for p in pred[:5]]
+            result = {
+                'image_index': i,
+                'true_label': true_label,
+                'top_5_predictions': top_5_predictions,
+                'top_5_probabilities': [p[1] for p in pred[:5]],
+                'in_top_1': pred[0][0] == true_label,
+                'in_top_5': true_label in top_5_predictions,
+                'rank': next((i + 1 for i, p in enumerate(pred) if p[0] == true_label), -1)
+            }
+            detailed_results.append(result)
+
+        return {
+            'top1_accuracy': top1_accuracy,
+            'top5_accuracy': top5_accuracy,
+            'detailed_results': detailed_results
+        }
 
 
 if __name__ == "__main__":
@@ -258,11 +285,15 @@ if __name__ == "__main__":
     dataset = load_one_shot_dataset("raw_dataset/small/test")
     image_full_paths = [item[0] for item in dataset]
     true_labels = [item[1] for item in dataset]
-    candidate_labels = [MAPPING[label] for label in MAPPING]
+    cand_labels = [MAPPING[label] for label in MAPPING]
 
     # Load the images
-    images = load_images(image_full_paths)
+    loaded_images = load_images(image_full_paths)
 
     # Perform classification and calculate accuracy
-    accuracy = classifier.calculate_accuracy(images, true_labels, candidate_labels)
-    print(f"\nClassification Accuracy: {accuracy:.3f}")
+    results = classifier.calculate_accuracy(loaded_images, true_labels, cand_labels)
+
+    # Print results
+    print("\nAccuracy Results:")
+    print(f"Top-1 Accuracy: {results['top1_accuracy']:.3f}")
+    print(f"Top-5 Accuracy: {results['top5_accuracy']:.3f}")
