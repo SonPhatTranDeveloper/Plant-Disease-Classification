@@ -17,7 +17,7 @@ from utils.labelling import MAPPING, convert_label
 class BLIPZeroShotClassifier:
     def __init__(self, model_name="Salesforce/blip-itm-base-coco"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = BlipProcessor.from_pretrained(model_name).to(self.device)
+        self.processor = BlipProcessor.from_pretrained(model_name)
         self.model = BlipForImageTextRetrieval.from_pretrained(model_name).to(self.device)
 
     def prepare_text_inputs(self, categories):
