@@ -84,8 +84,8 @@ def load_images(image_paths: List[str]) -> List[Image.Image]:
     return [load_image(path) for path in image_paths]
 
 
-class CLIPZeroShotClassifier:
-    def __init__(self, model_name: str = "openai/clip-vit-large-patch14"):
+class BLIPZeroShotClassifier:
+    def __init__(self, model_name: str = "Salesforce/blip-itm-base-coco"):
         """
         Initialize the CLIP zero-shot classifier.
 
@@ -228,7 +228,7 @@ class CLIPZeroShotClassifier:
 
 if __name__ == "__main__":
     # Initialize classifier
-    classifier = CLIPZeroShotClassifier()
+    classifier = BLIPZeroShotClassifier()
 
     # Load the dataset
     dataset = load_one_shot_dataset("raw_dataset/small/test")
