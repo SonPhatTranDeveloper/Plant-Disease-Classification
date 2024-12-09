@@ -13,16 +13,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from utils.labelling import MAPPING
-
-
-def create_imagebind_label(label: str) -> str:
-    """
-    Get the label for CLIP one-shot classification using image label
-    :param label: class label
-    :return: CLIPv2 one-shot label
-    """
-    return MAPPING[label]
+from utils.labelling import convert_label
 
 
 def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
@@ -57,7 +48,7 @@ def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
         all_images = os.listdir(disease_path)
 
         for image in all_images:
-            clip_label = create_imagebind_label(disease)
+            clip_label = convert_label(disease)
             full_image_path = os.path.join(disease_path, image)
             result.append((full_image_path, clip_label))
 

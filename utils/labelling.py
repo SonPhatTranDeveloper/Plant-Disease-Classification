@@ -44,3 +44,12 @@ MAPPING = {
     "Tomato__target_spot": "An image of a tomato leaf with target spot disease",
     "Tomato__yellow_leaf_curl_virus": "An image of a tomato leaf infected with yellow leaf curl virus"
 }
+
+
+def convert_label(label: str) -> str:
+    """
+    Get the label for one-shot classification using image label
+    :param label: class label
+    :return: CLIPv2 one-shot label
+    """
+    return MAPPING[label]
