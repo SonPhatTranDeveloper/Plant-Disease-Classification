@@ -46,7 +46,7 @@ def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
         all_images = os.listdir(disease_path)
 
         for image in all_images:
-            clip_label = convert_label(disease, with_prefix=False)
+            clip_label = convert_label(disease, with_prefix=True)
             full_image_path = os.path.join(disease_path, image)
             result.append((full_image_path, clip_label))
 
