@@ -66,13 +66,13 @@ def extract_small_dataset(
 
 if __name__ == "__main__":
     # Set the random seed for the process
-    np.random.seed(1102)
+    np.random.seed(1111)
 
     # Define the full folder path and target folder path
     full_path = "raw_dataset/full"
     small_path = "raw_dataset/small"
     extract_small_dataset(
         full_path, small_path,
-        train_samples_per_class=10,
+        train_samples_per_class=5,
         test_samples_per_class=100
     )
