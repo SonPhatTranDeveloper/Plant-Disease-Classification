@@ -2,113 +2,105 @@
 Author: Son Phat Tran
 This code contains the logic for one-shot classification using BLIP
 """
-from typing import List
-
 import torch
 import torch.nn.functional as F
-from torch.utils.data import Dataset
 
+from PIL import Image
 from transformers import BlipProcessor, BlipForImageTextRetrieval
 from torchvision import datasets, transforms
 
 from tqdm import tqdm
-from pathlib import Path
-from PIL import Image
 
-from utils.labelling import MAPPING, convert_label
+from utils.labelling import MAPPING
 
 
 class BLIPZeroShotClassifier:
     def __init__(self, model_name="Salesforce/blip-itm-base-coco"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = BlipProcessor.from_pretrained(model_name)
+        self.processor = BlipProcessor.from_pretrained(model_name).to(self.device)
         self.model = BlipForImageTextRetrieval.from_pretrained(model_name).to(self.device)
-        self.model.eval()  # Set model to evaluation mode
 
     def prepare_text_inputs(self, categories):
-        """Prepare text inputs for all categories at once."""
-        texts = [f"a photo of a {category}" for category in categories]
-        text_inputs = self.processor(text=texts, return_tensors="pt", padding=True)
-        return {k: v.to(self.device) for k, v in text_inputs.items()}
+        """Prepare text inputs for all categories."""
+        text_inputs = []
+        for category in categories:
+            # Create a template prompt for each category
+            text = f"a photo of a {category}"
+            encoded = self.processor(text=text, return_tensors="pt", padding=True)
+            text_inputs.append(encoded)
+        return text_inputs
 
-    @torch.no_grad()
-    def classify_batch(self, images, categories, return_top_k=1):
-        """Perform zero-shot classification on a batch of images."""
-        batch_size = images.size(0)
-        num_categories = len(categories)
+    def classify_image(self, image_path, categories, return_top_k=1):
+        """Perform zero-shot classification on a single image."""
+        # Load and preprocess image
+        image = Image.open(image_path).convert('RGB')
+        image_inputs = self.processor(images=image, return_tensors="pt").to(self.device)
 
-        # Process images
-        images = [transforms.ToPILImage()(img) for img in images]
-        image_inputs = self.processor(
-            images=images,
-            return_tensors="pt",
-            padding=True
-        )
-        image_inputs = {k: v.to(self.device) for k, v in image_inputs.items()}
-
-        # Process text once for all categories
+        # Prepare text inputs for all categories
+        scores = []
         text_inputs = self.prepare_text_inputs(categories)
 
-        # Initialize scores tensor
-        all_scores = torch.zeros(batch_size, num_categories).to(self.device)
-
-        # Calculate similarity scores for each category
-        for i, category in enumerate(categories):
-            # Select the text inputs for current category
-            curr_text_inputs = {
-                k: v[i:i + 1] for k, v in text_inputs.items()
-            }
-
-            # Get model outputs
-            outputs = self.model(**image_inputs, **curr_text_inputs)
-            scores = F.softmax(outputs.itm_score, dim=1)[:, 1]
-            all_scores[:, i] = scores
+        # Get similarity scores for each category
+        with torch.no_grad():
+            for text_input in text_inputs:
+                text_input = {k: v.to(self.device) for k, v in text_input.items()}
+                outputs = self.model(**image_inputs, **text_input)
+                itm_score = F.softmax(outputs.itm_score, dim=1)[:, 1]
+                scores.append(itm_score.item())
 
         # Get top-k predictions
-        top_k_scores, top_k_indices = torch.topk(all_scores, k=min(return_top_k, num_categories), dim=1)
+        scores = torch.tensor(scores)
+        top_k_scores, top_k_indices = torch.topk(scores, min(return_top_k, len(categories)))
 
-        return top_k_scores, top_k_indices
+        predictions = [(categories[idx], scores[idx].item()) for idx in top_k_indices]
+        return predictions
 
 
 def evaluate_zero_shot(classifier, data_dir, categories, batch_size=32):
     """Evaluate the zero-shot classifier on a dataset."""
+    # Setup data transforms
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
     ])
 
+    # Load dataset
     dataset = datasets.ImageFolder(data_dir, transform=transform)
-    dataloader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=4,  # Parallel data loading
-        pin_memory=True  # Faster data transfer to GPU
-    )
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     top1_correct = 0
     top5_correct = 0
     total = 0
 
     for images, labels in tqdm(dataloader, desc="Evaluating"):
-        images = images.to(classifier.device)
-        labels = labels.to(classifier.device)
+        for img, label in zip(images, labels):
+            # Convert tensor to PIL Image
+            img_pil = transforms.ToPILImage()(img)
 
-        # Get predictions for the entire batch
-        top_k_scores, top_k_indices = classifier.classify_batch(images, categories, return_top_k=5)
+            # Get predictions
+            predictions = classifier.classify_image(img_pil, categories, return_top_k=5)
 
-        # Calculate top-1 accuracy
-        top1_preds = top_k_indices[:, 0]
-        top1_correct += (top1_preds == labels).sum().item()
+            # Get ground truth category
+            true_category = categories[label]
 
-        # Calculate top-5 accuracy
-        top5_correct += sum(labels.view(-1, 1) == top_k_indices).any(dim=1).sum().item()
+            # Check top-1 accuracy
+            if predictions[0][0] == true_category:
+                top1_correct += 1
 
-        total += labels.size(0)
+            # Check top-5 accuracy
+            pred_categories = [p[0] for p in predictions]
+            if true_category in pred_categories:
+                top5_correct += 1
+
+            total += 1
+
+    # Calculate accuracies
+    top1_accuracy = top1_correct / total * 100
+    top5_accuracy = top5_correct / total * 100
 
     return {
-        "top1_accuracy": (top1_correct / total) * 100,
-        "top5_accuracy": (top5_correct / total) * 100,
+        "top1_accuracy": top1_accuracy,
+        "top5_accuracy": top5_accuracy,
         "total_samples": total
     }
 
