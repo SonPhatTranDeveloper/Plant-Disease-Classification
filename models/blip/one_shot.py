@@ -11,7 +11,7 @@ from torchvision import datasets, transforms
 
 from tqdm import tqdm
 
-from utils.labelling import MAPPING
+from utils.labelling import MAPPING, convert_label
 
 
 class BLIPZeroShotClassifier:
@@ -25,8 +25,7 @@ class BLIPZeroShotClassifier:
         text_inputs = []
         for category in categories:
             # Create a template prompt for each category
-            text = f"a photo of a {category}"
-            encoded = self.processor(text=text, return_tensors="pt", padding=True)
+            encoded = self.processor(text=convert_label(category), return_tensors="pt", padding=True)
             text_inputs.append(encoded)
         return text_inputs
 
@@ -34,7 +33,7 @@ class BLIPZeroShotClassifier:
         """Perform zero-shot classification on a single image."""
         # Load and preprocess image
         image = Image.open(image_path).convert('RGB')
-        image_inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+        image_inputs = self.processor(images=image, return_tensors="pt")
 
         # Prepare text inputs for all categories
         scores = []
