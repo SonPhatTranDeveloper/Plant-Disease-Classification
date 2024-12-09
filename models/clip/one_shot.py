@@ -11,7 +11,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from utils.labelling import convert_label
+from utils.labelling import convert_label, MAPPING
 
 
 def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
@@ -99,7 +99,7 @@ class CLIPZeroShotClassifier:
     def classify(self,
                  image: Image.Image,
                  candidate_labels: List[str],
-                 hypothesis_template: str = "a photo of a {}") -> List[Tuple[str, float]]:
+                 hypothesis_template: str = "{}") -> List[Tuple[str, float]]:
         """
         Perform zero-shot classification on an image.
 
@@ -116,7 +116,7 @@ class CLIPZeroShotClassifier:
     def batch_classify(self,
                        images: List[Image.Image],
                        candidate_labels: List[str],
-                       hypothesis_template: str = "a photo of a {}",
+                       hypothesis_template: str = "{}",
                        batch_size: int = 32) -> List[List[Tuple[str, float]]]:
         """
         Perform zero-shot classification on a batch of images.
@@ -169,7 +169,7 @@ class CLIPZeroShotClassifier:
                            images: List[Image.Image],
                            true_labels: List[str],
                            candidate_labels: List[str],
-                           hypothesis_template: str = "a photo of a {}",
+                           hypothesis_template: str = "{}",
                            batch_size: int = 32) -> Dict[str, float]:
         """
         Calculate top-1 and top-5 accuracy on a batch of images.
