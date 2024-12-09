@@ -114,7 +114,12 @@ def load_image(image_path: str) -> Image.Image:
     Returns:
         PIL.Image: Loaded image
     """
-    return Image.open(image_path)
+    # Avoid a bug in Pillow
+    # by opening an image, make a copy then close it
+    temp = Image.open(image_path)
+    keep = temp.copy()
+    temp.close()
+    return keep
 
 
 def load_images(image_paths: List[str]) -> List[Image.Image]:
