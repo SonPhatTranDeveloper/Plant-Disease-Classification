@@ -87,51 +87,53 @@ def load_images(image_paths: List[str]) -> List[Image.Image]:
 class BLIPZeroShotClassifier:
     def __init__(self, model_name: str = "Salesforce/blip-itm-base-coco"):
         """
-        Initialize the CLIP zero-shot classifier.
+        Initialize the BLIP classifier using Image-Text Retrieval model.
 
         Args:
-            model_name (str): Name of the CLIP model to use
+            model_name (str): Name of the BLIP model to use
         """
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.processor = BlipProcessor.from_pretrained(model_name)
+        print("Loading BLIP model...")
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = BlipForImageTextRetrieval.from_pretrained(model_name).to(self.device)
+        self.processor = BlipProcessor.from_pretrained(model_name)
+        print(f"Model loaded successfully on {self.device}")
 
     def classify(self,
                  image: Image.Image,
                  candidate_labels: List[str],
-                 hypothesis_template: str = "{}") -> List[Tuple[str, float]]:
+                 text_template: str = "a photo of a {}") -> List[Tuple[str, float]]:
         """
-        Perform zero-shot classification on an image.
+        Perform zero-shot classification on an image using BLIP's ITM capabilities.
 
         Args:
             image (PIL.Image): Input image to classify
             candidate_labels (List[str]): List of possible class labels
-            hypothesis_template (str): Template string for text prompts
+            text_template (str): Template for forming text descriptions
 
         Returns:
             List[Tuple[str, float]]: List of (label, probability) pairs, sorted by probability
         """
-        return self.batch_classify([image], candidate_labels, hypothesis_template)[0]
+        return self.batch_classify([image], candidate_labels, text_template)[0]
 
     def batch_classify(self,
                        images: List[Image.Image],
                        candidate_labels: List[str],
-                       hypothesis_template: str = "{}",
+                       text_template: str = "a photo of a {}",
                        batch_size: int = 32) -> List[List[Tuple[str, float]]]:
         """
-        Perform zero-shot classification on a batch of images.
+        Perform zero-shot classification on a batch of images using BLIP ITM.
 
         Args:
             images (List[PIL.Image]): List of input images to classify
             candidate_labels (List[str]): List of possible class labels
-            hypothesis_template (str): Template string for text prompts
+            text_template (str): Template for forming text descriptions
             batch_size (int): Size of batches for processing
 
         Returns:
             List[List[Tuple[str, float]]]: List of classification results for each image
         """
-        text_prompts = [hypothesis_template.format(label) for label in candidate_labels]
         all_results = []
+        text_inputs = [text_template.format(label) for label in candidate_labels]
 
         # Create progress bar for batch processing
         pbar = tqdm(total=len(images), desc="Processing images", unit="image")
@@ -139,27 +141,30 @@ class BLIPZeroShotClassifier:
         # Process images in batches
         for i in range(0, len(images), batch_size):
             batch_images = images[i:i + batch_size]
+            batch_results = []
 
-            # Prepare inputs
-            inputs = self.processor(
-                text=text_prompts,
-                images=batch_images,
-                return_tensors="pt",
-                padding=True
-            ).to(self.device)
+            for image in batch_images:
+                # Prepare inputs for all labels at once
+                inputs = self.processor(
+                    images=[image] * len(candidate_labels),
+                    text=text_inputs,
+                    return_tensors="pt",
+                    padding=True
+                ).to(self.device)
 
-            # Calculate features
-            with torch.no_grad():
-                outputs = self.model(**inputs)
-                logits_per_image = outputs.logits_per_image
-                probs = logits_per_image.softmax(dim=1).cpu().numpy()
+                # Calculate ITM scores
+                with torch.no_grad():
+                    outputs = self.model(**inputs)
+                    itm_scores = torch.nn.functional.softmax(outputs.itm_score, dim=1)
+                    # Get the probability of image-text match (positive class)
+                    probs = itm_scores[:, 1].cpu().numpy()
 
-            # Process results for each image in batch
-            for image_probs in probs:
-                results = [(label, float(prob)) for label, prob in zip(candidate_labels, image_probs)]
-                all_results.append(sorted(results, key=lambda x: x[1], reverse=True))
+                # Create and sort results for this image
+                image_results = [(label, float(prob)) for label, prob in zip(candidate_labels, probs)]
+                image_results.sort(key=lambda x: x[1], reverse=True)
+                batch_results.append(image_results)
 
-            # Update progress bar
+            all_results.extend(batch_results)
             pbar.update(len(batch_images))
 
         pbar.close()
@@ -169,7 +174,7 @@ class BLIPZeroShotClassifier:
                            images: List[Image.Image],
                            true_labels: List[str],
                            candidate_labels: List[str],
-                           hypothesis_template: str = "{}",
+                           text_template: str = "a photo of a {}",
                            batch_size: int = 32) -> Dict[str, float]:
         """
         Calculate top-1 and top-5 accuracy on a batch of images.
@@ -178,7 +183,7 @@ class BLIPZeroShotClassifier:
             images (List[PIL.Image]): List of input images
             true_labels (List[str]): List of true labels for the images
             candidate_labels (List[str]): List of possible class labels
-            hypothesis_template (str): Template string for text prompts
+            text_template (str): Template for forming text descriptions
             batch_size (int): Size of batches for processing
 
         Returns:
@@ -191,20 +196,18 @@ class BLIPZeroShotClassifier:
             raise ValueError("Need at least 5 candidate labels for top-5 accuracy")
 
         print("Calculating accuracy...")
-        # Get predictions
-        predictions = self.batch_classify(images, candidate_labels, hypothesis_template, batch_size)
+        predictions = self.batch_classify(images, candidate_labels, text_template, batch_size)
 
-        # Calculate top-1 accuracy
+        # Calculate accuracies
         top1_correct = sum(1 for pred, true_label in zip(predictions, true_labels)
                            if pred[0][0] == true_label)
-        top1_accuracy = top1_correct / len(true_labels)
-
-        # Calculate top-5 accuracy
         top5_correct = sum(1 for pred, true_label in zip(predictions, true_labels)
                            if true_label in [p[0] for p in pred[:5]])
+
+        top1_accuracy = top1_correct / len(true_labels)
         top5_accuracy = top5_correct / len(true_labels)
 
-        # Calculate per-image accuracies for detailed analysis
+        # Detailed results
         detailed_results = []
         for i, (pred, true_label) in enumerate(zip(predictions, true_labels)):
             top_5_predictions = [p[0] for p in pred[:5]]
@@ -212,7 +215,7 @@ class BLIPZeroShotClassifier:
                 'image_index': i,
                 'true_label': true_label,
                 'top_5_predictions': top_5_predictions,
-                'top_5_probabilities': [p[1] for p in pred[:5]],
+                'top_5_scores': [p[1] for p in pred[:5]],
                 'in_top_1': pred[0][0] == true_label,
                 'in_top_5': true_label in top_5_predictions,
                 'rank': next((i + 1 for i, p in enumerate(pred) if p[0] == true_label), -1)
