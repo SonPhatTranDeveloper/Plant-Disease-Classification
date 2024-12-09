@@ -89,7 +89,7 @@ class BLIPZeroShotClassifier:
             model_name (str): Name of the CLIP model to use
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model = BlipForImageTextRetrieval.from_pretrained(model_name)
+        self.model = BlipForImageTextRetrieval.from_pretrained(model_name).to(self.device)
         self.processor = AutoProcessor.from_pretrained(model_name)
 
     def classify(self,
