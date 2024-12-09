@@ -9,6 +9,8 @@ import torch
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 
+from tqdm import tqdm
+
 
 # Define the mapping between labels and one-shot prompt
 MAPPING = {
@@ -177,6 +179,10 @@ class CLIPZeroShotClassifier:
         text_prompts = [hypothesis_template.format(label) for label in candidate_labels]
         all_results = []
 
+        # Create progress bar for batch processing
+        num_batches = (len(images) + batch_size - 1) // batch_size
+        pbar = tqdm(total=len(images), desc="Processing images", unit="image")
+
         # Process images in batches
         for i in range(0, len(images), batch_size):
             batch_images = images[i:i + batch_size]
@@ -200,6 +206,10 @@ class CLIPZeroShotClassifier:
                 results = [(label, float(prob)) for label, prob in zip(candidate_labels, image_probs)]
                 all_results.append(sorted(results, key=lambda x: x[1], reverse=True))
 
+            # Update progress bar
+            pbar.update(len(batch_images))
+
+        pbar.close()
         return all_results
 
     def calculate_accuracy(self,
@@ -230,9 +240,9 @@ class CLIPZeroShotClassifier:
 
         # Calculate accuracy
         correct_predictions = sum(1 for true, pred in zip(true_labels, predicted_labels) if true == pred)
-        accuracy = correct_predictions / len(true_labels)
+        acc = correct_predictions / len(true_labels)
 
-        return accuracy
+        return acc
 
 
 if __name__ == "__main__":
