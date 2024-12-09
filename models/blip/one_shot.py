@@ -31,23 +31,41 @@ class BLIPZeroShotClassifier:
         text_inputs = self.processor(text=texts, return_tensors="pt", padding=True)
         return {k: v.to(self.device) for k, v in text_inputs.items()}
 
-    @torch.no_grad()  # Disable gradient computation
+    @torch.no_grad()
     def classify_batch(self, images, categories, return_top_k=1):
         """Perform zero-shot classification on a batch of images."""
-        # Process all images at once
-        image_inputs = self.processor(images=images, return_tensors="pt", padding=True)
+        batch_size = images.size(0)
+        num_categories = len(categories)
+
+        # Process images
+        images = [transforms.ToPILImage()(img) for img in images]
+        image_inputs = self.processor(
+            images=images,
+            return_tensors="pt",
+            padding=True
+        )
         image_inputs = {k: v.to(self.device) for k, v in image_inputs.items()}
 
-        # Process all categories at once
+        # Process text once for all categories
         text_inputs = self.prepare_text_inputs(categories)
 
-        # Get similarity scores for the entire batch
-        outputs = self.model(**image_inputs, **text_inputs)
-        scores = F.softmax(outputs.itm_score, dim=1)[:, 1]
+        # Initialize scores tensor
+        all_scores = torch.zeros(batch_size, num_categories).to(self.device)
 
-        # Get top-k predictions for each image
-        top_k_scores, top_k_indices = torch.topk(scores.view(-1, len(categories)),
-                                                 k=min(return_top_k, len(categories)))
+        # Calculate similarity scores for each category
+        for i, category in enumerate(categories):
+            # Select the text inputs for current category
+            curr_text_inputs = {
+                k: v[i:i + 1] for k, v in text_inputs.items()
+            }
+
+            # Get model outputs
+            outputs = self.model(**image_inputs, **curr_text_inputs)
+            scores = F.softmax(outputs.itm_score, dim=1)[:, 1]
+            all_scores[:, i] = scores
+
+        # Get top-k predictions
+        top_k_scores, top_k_indices = torch.topk(all_scores, k=min(return_top_k, num_categories), dim=1)
 
         return top_k_scores, top_k_indices
 
