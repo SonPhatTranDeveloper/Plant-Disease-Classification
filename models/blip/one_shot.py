@@ -224,7 +224,7 @@ class BLIPZeroShotClassifier:
 
 if __name__ == "__main__":
     # Initialize classifier
-    classifier = CLIPZeroShotClassifier()
+    classifier = BLIPZeroShotClassifier()
 
     # Load the dataset
     dataset = load_one_shot_dataset("raw_dataset/small/test")
