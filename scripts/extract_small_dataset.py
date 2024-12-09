@@ -74,5 +74,5 @@ if __name__ == "__main__":
     extract_small_dataset(
         full_path, small_path,
         train_samples_per_class=10,
-        test_samples_per_class=80
+        test_samples_per_class=100
     )
