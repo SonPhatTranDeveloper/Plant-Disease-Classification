@@ -12,45 +12,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from utils.labelling import convert_label, MAPPING_WITH_PREFIX
-
-
-def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
-    """
-    Load the oneshot dataset classification (image + label) from a folder
-    Note that the folder must have the following structure:
-    - class 1:
-        - Image 1.png
-        - Image 2.png
-    - class 2:
-        - Image 3.png
-        - Image 4.png
-    :param dataset_path: Path to the dataset
-    :return: List of (image file path, image class)
-    """
-    # Get all the folders in the full dataset path
-    diseases = os.listdir(dataset_path)
-
-    # Create a result dataset
-    result = []
-
-    # From each dataset, sample total_samples for train and test set
-    for disease in diseases:
-        # Get the full path
-        disease_path = os.path.join(dataset_path, disease)
-
-        # Check if not directory -> skip
-        if not os.path.isdir(disease_path):
-            continue
-
-        # Get all the files in the folder
-        all_images = os.listdir(disease_path)
-
-        for image in all_images:
-            clip_label = convert_label(disease)
-            full_image_path = os.path.join(disease_path, image)
-            result.append((full_image_path, clip_label))
-
-    return result
+from utils.data import load_image_label_pairs
 
 
 def load_image(image_path: str) -> Image.Image:
@@ -231,7 +193,7 @@ if __name__ == "__main__":
     classifier = CLIPZeroShotClassifier()
 
     # Load the dataset
-    dataset = load_one_shot_dataset("raw_dataset/small/test")
+    dataset = load_image_label_pairs("raw_dataset/small/test", convert_label)
     image_full_paths = [item[0] for item in dataset]
     true_labels = [item[1] for item in dataset]
     cand_labels = [MAPPING_WITH_PREFIX[label] for label in MAPPING_WITH_PREFIX]
