@@ -218,14 +218,14 @@ def main():
         image_paths=train_image_paths,
         labels=train_image_labels,
         processor=fine_tuner.processor,
-        num_augmentations=10,
+        num_augmentations=19,
     )
 
     val_dataset = ImageLabelDataset(
         image_paths=test_image_paths,
         labels=test_image_labels,
         processor=fine_tuner.processor,
-        num_augmentations=1
+        num_augmentations=0
     )
 
     # Create dataloaders
