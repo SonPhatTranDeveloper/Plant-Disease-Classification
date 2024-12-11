@@ -181,6 +181,7 @@ if __name__ == "__main__":
     classifier.fit(train_embeddings, train_labels)
 
     # Evaluate
-    metrics = classifier.evaluate(test_embeddings,test_labels)
+    metrics = classifier.evaluate(test_embeddings, test_labels)
+    print("Generating one-shot classification result")
     print(f"Top-1 Accuracy: {metrics['top1_accuracy']:.3f}")
     print(f"Top-5 Accuracy: {metrics['top5_accuracy']:.3f}")
