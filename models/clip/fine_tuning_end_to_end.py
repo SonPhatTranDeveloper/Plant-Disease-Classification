@@ -6,6 +6,7 @@ import os
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+from torchvision.transforms import transforms
 from transformers import CLIPProcessor, CLIPModel
 
 from PIL import Image
@@ -47,23 +48,40 @@ def collate_fn(batch):
 
 
 class ImageLabelDataset(Dataset):
-    def __init__(self, image_paths, processor, labels):
+    def __init__(self, image_paths, processor, labels, num_augmentations=10):
+        self.num_augmentations = num_augmentations
         self.processor = processor
         self.image_paths = image_paths
         self.labels = labels
 
+        # Define augmentation transforms
+        self.augment_transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(15),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+        ])
+
     def __len__(self):
-        return len(self.image_paths)
+        return len(self.image_paths) * (self.num_augmentations + 1)
 
     def __getitem__(self, idx):
+        # Get the augmentation index
+        original_idx = idx // (self.num_augmentations + 1)
+        aug_num = idx % (self.num_augmentations + 1)
+
         # Load the image
-        image_path = self.image_paths[idx]
+        image_path = self.image_paths[original_idx]
         temp = Image.open(image_path).convert('RGB')
         image = temp.copy()
         temp.close()
 
+        # Check if original image
+        if aug_num != 0:
+            image = self.augment_transform(image)
+
         # Get the label
-        label = self.labels[idx]
+        label = self.labels[original_idx]
 
         # Process image and text separately
         image_inputs = self.processor(
@@ -200,12 +218,14 @@ def main():
         image_paths=train_image_paths,
         labels=train_image_labels,
         processor=fine_tuner.processor,
+        num_augmentations=10,
     )
 
     val_dataset = ImageLabelDataset(
         image_paths=test_image_paths,
         labels=test_image_labels,
         processor=fine_tuner.processor,
+        num_augmentations=1
     )
 
     # Create dataloaders
