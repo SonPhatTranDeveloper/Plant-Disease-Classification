@@ -2,7 +2,6 @@
 Author: Son Phat Tran
 This file contains the code for CLIP zero-shot classification
 """
-import os
 from typing import List, Tuple, Dict
 
 import torch

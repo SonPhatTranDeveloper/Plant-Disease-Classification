@@ -148,7 +148,7 @@ class CLIPFineTuner:
                 torch.save({
                     'model_state_dict': self.model.state_dict(),
                     'val_loss': val_loss
-                }, 'best_model.pth')
+                }, 'weights/best_clip_model.pth')
 
     def evaluate(self, val_loader):
         self.model.eval()
