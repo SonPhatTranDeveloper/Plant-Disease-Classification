@@ -11,8 +11,9 @@ from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
 from tqdm import tqdm
 
+from models.clip.one_shot import CLIPZeroShotClassifier, load_images
 from utils.data import load_image_label_pairs
-from utils.labelling import convert_label
+from utils.labelling import convert_label, MAPPING_WITH_PREFIX
 
 
 def collate_fn(batch):
@@ -154,8 +155,10 @@ class CLIPFineTuner:
         self.model.eval()
         total_loss = 0
 
+        pbar = tqdm(val_loader, desc='Evaluation')
+
         with torch.no_grad():
-            for batch in val_loader:
+            for batch in pbar:
                 pixel_values = batch['pixel_values'].to(self.device)
                 input_ids = batch['input_ids'].to(self.device)
                 attention_mask = batch['attention_mask'].to(self.device)
@@ -167,7 +170,13 @@ class CLIPFineTuner:
                     return_loss=True
                 )
 
-                total_loss += outputs.loss.item()
+                loss = outputs.loss.item()
+                total_loss += loss
+
+                # Update progress bar with current loss
+                pbar.set_postfix({
+                    'loss': total_loss / len(val_loader)
+                })
 
         return total_loss / len(val_loader)
 
@@ -217,7 +226,35 @@ def main():
     )
 
     # Train the model
-    fine_tuner.train(train_loader, val_loader)
+    fine_tuner.train(train_loader, val_loader, learning_rate=1e-6)
+
+    # Perform zero-shot classification
+    perform_one_shot_classification(fine_tuner)
+
+
+def perform_one_shot_classification(fine_tuner):
+    # Initialize classifier
+    classifier = CLIPZeroShotClassifier(
+        model=fine_tuner.model,
+        processor=fine_tuner.processor
+    )
+
+    # Load the dataset
+    dataset = load_image_label_pairs("raw_dataset/small/test", convert_label)
+    image_full_paths = [item[0] for item in dataset]
+    true_labels = [item[1] for item in dataset]
+    cand_labels = [MAPPING_WITH_PREFIX[label] for label in MAPPING_WITH_PREFIX]
+
+    # Load the images
+    loaded_images = load_images(image_full_paths)
+
+    # Perform classification and calculate accuracy
+    results = classifier.calculate_accuracy(loaded_images, true_labels, cand_labels)
+
+    # Print results
+    print("\nAccuracy Results:")
+    print(f"Top-1 Accuracy: {results['top1_accuracy']:.3f}")
+    print(f"Top-5 Accuracy: {results['top5_accuracy']:.3f}")
 
 
 if __name__ == "__main__":
