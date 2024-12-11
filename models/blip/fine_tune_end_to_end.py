@@ -196,6 +196,9 @@ class BlipFineTuner:
                     'loss': total_loss / len(val_loader)
                 })
 
+        # Perform zero-shot classification each time we do evaluation
+        perform_one_shot_classification(self)
+
         return total_loss / len(val_loader)
 
 
@@ -247,9 +250,6 @@ def main():
 
     # Train the model
     fine_tuner.train(train_loader, val_loader, num_epochs=15, learning_rate=1e-7)
-
-    # Perform zero-shot classification
-    perform_one_shot_classification(fine_tuner)
 
 
 def perform_one_shot_classification(fine_tuner):
