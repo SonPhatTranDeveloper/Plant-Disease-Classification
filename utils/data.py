@@ -17,6 +17,7 @@ def load_image_label_pairs(dataset_path: str, convert_label: Any) -> List[Tuple[
     - class 2:
         - Image 3.png
         - Image 4.png
+    :param convert_label: convert folder name to a label
     :param dataset_path: Path to the dataset
     :return: List of (image file path, image class)
     """
