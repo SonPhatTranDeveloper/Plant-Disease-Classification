@@ -85,16 +85,18 @@ def load_images(image_paths: List[str]) -> List[Image.Image]:
 
 
 class BLIPZeroShotClassifier:
-    def __init__(self, model_name: str = "Salesforce/blip-image-captioning-large"):
+    def __init__(self, model_name: str = "Salesforce/blip-image-captioning-large", model = None, processor = None):
         """
         Initialize the CLIP zero-shot classifier.
 
         Args:
             model_name (str): Name of the CLIP model to use
+            model: trained model
+            processor: trained processor
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.model = BlipModel.from_pretrained(model_name).to(self.device)
-        self.processor = BlipProcessor.from_pretrained(model_name)
+        self.model = model if model is not None else BlipModel.from_pretrained(model_name).to(self.device)
+        self.processor = processor if processor is not None else BlipProcessor.from_pretrained(model_name)
 
     def classify(self,
                  image: Image.Image,
