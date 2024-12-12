@@ -280,7 +280,7 @@ def evaluate(model, val_loader, criterion, device):
 
             # Calculate top-1 and top-5 accuracy
             _, predicted = outputs.topk(5, 1, True, True)
-            total += labels.size(0)
+            total += label_indices.size(0)
 
             # Top-1 accuracy
             correct_top1 += (predicted[:, 0] == label_indices).sum().item()
