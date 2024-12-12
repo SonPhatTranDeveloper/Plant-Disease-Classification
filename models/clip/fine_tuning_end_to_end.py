@@ -251,7 +251,7 @@ def main():
     )
 
     # Train the model
-    fine_tuner.train(train_loader, val_loader, num_epochs=15, learning_rate=5e-6)
+    fine_tuner.train(train_loader, val_loader, num_epochs=15, learning_rate=1e-6)
 
 
 def perform_one_shot_classification(fine_tuner):
