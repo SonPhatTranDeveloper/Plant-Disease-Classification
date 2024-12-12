@@ -352,7 +352,7 @@ if __name__ == "__main__":
     test_dataset = AugmentedDINOv2Dataset(
         image_paths=test_paths,
         labels=test_labels,
-        num_augmentations=1
+        num_augmentations=0
     )
 
     # Create dataloaders
