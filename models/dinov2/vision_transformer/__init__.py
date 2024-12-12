@@ -13,16 +13,13 @@ import logging
 from typing import Sequence, Tuple, Union, Callable
 
 import torch
-import torch.nn as nn
-import torch.utils.checkpoint
-from torch.nn.init import trunc_normal_
 
-from models.dinov2.layers import Mlp, PatchEmbed, SwiGLUFFNFused, MemEffAttention, NestedTensorBlock as Block
+from models.dinov2.layers import (Mlp, PatchEmbed, SwiGLUFFNFused, MemEffAttention, NestedTensorBlock as Block)
 
 logger = logging.getLogger("dinov2")
 
 
-def named_apply(fn: Callable, module: nn.Module, name="", depth_first=True, include_root=False) -> nn.Module:
+def named_apply(fn: Callable, module: torch.nn.Module, name="", depth_first=True, include_root=False) -> torch.nn.Module:
     if not depth_first and include_root:
         fn(module=module, name=name)
     for child_name, child_module in module.named_children():
@@ -33,14 +30,14 @@ def named_apply(fn: Callable, module: nn.Module, name="", depth_first=True, incl
     return module
 
 
-class BlockChunk(nn.ModuleList):
+class BlockChunk(torch.nn.ModuleList):
     def forward(self, x):
         for b in self:
             x = b(x)
         return x
 
 
-class DinoVisionTransformer(nn.Module):
+class DinoVisionTransformer(torch.nn.Module):
     def __init__(
         self,
         img_size=224,
@@ -57,7 +54,7 @@ class DinoVisionTransformer(nn.Module):
         drop_path_uniform=False,
         init_values=None,  # for layerscale: None or 0 => no layerscale
         embed_layer=PatchEmbed,
-        act_layer=nn.GELU,
+        act_layer=torch.nn.GELU,
         block_fn=Block,
         ffn_layer="mlp",
         block_chunks=1,
@@ -69,7 +66,7 @@ class DinoVisionTransformer(nn.Module):
         Args:
             img_size (int, tuple): input image size
             patch_size (int, tuple): patch size
-            in_chans (int): number of input channels
+            in_chans (int): number of input chatorch.nnels
             embed_dim (int): embedding dimension
             depth (int): depth of transformer
             num_heads (int): number of attention heads
@@ -81,9 +78,9 @@ class DinoVisionTransformer(nn.Module):
             drop_path_uniform (bool): apply uniform drop rate across blocks
             weight_init (str): weight init scheme
             init_values (float): layer-scale init values
-            embed_layer (nn.Module): patch embedding layer
-            act_layer (nn.Module): MLP activation layer
-            block_fn (nn.Module): transformer block class
+            embed_layer (torch.nn.Module): patch embedding layer
+            act_layer (torch.nn.Module): MLP activation layer
+            block_fn (torch.nn.Module): transformer block class
             ffn_layer (str): "mlp", "swiglu", "swiglufused" or "identity"
             block_chunks: (int) split block sequence into block_chunks units for FSDP wrap
             num_register_tokens: (int) number of extra cls tokens (so-called "registers")
@@ -91,7 +88,7 @@ class DinoVisionTransformer(nn.Module):
             interpolate_offset: (float) work-around offset to apply when interpolating positional embeddings
         """
         super().__init__()
-        norm_layer = partial(nn.LayerNorm, eps=1e-6)
+        norm_layer = partial(torch.nn.LayerNorm, eps=1e-6)
 
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other dinov2
         self.num_tokens = 1
@@ -105,11 +102,11 @@ class DinoVisionTransformer(nn.Module):
         self.patch_embed = embed_layer(img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + self.num_tokens, embed_dim))
+        self.cls_token = torch.nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = torch.nn.Parameter(torch.zeros(1, num_patches + self.num_tokens, embed_dim))
         assert num_register_tokens >= 0
         self.register_tokens = (
-            nn.Parameter(torch.zeros(1, num_register_tokens, embed_dim)) if num_register_tokens else None
+            torch.nn.Parameter(torch.zeros(1, num_register_tokens, embed_dim)) if num_register_tokens else None
         )
 
         if drop_path_uniform is True:
@@ -127,7 +124,7 @@ class DinoVisionTransformer(nn.Module):
             logger.info("using Identity layer as FFN")
 
             def f(*args, **kwargs):
-                return nn.Identity()
+                return torch.nn.Identity()
 
             ffn_layer = f
         else:
@@ -155,24 +152,24 @@ class DinoVisionTransformer(nn.Module):
             chunksize = depth // block_chunks
             for i in range(0, depth, chunksize):
                 # this is to keep the block index consistent if we chunk the block list
-                chunked_blocks.append([nn.Identity()] * i + blocks_list[i : i + chunksize])
-            self.blocks = nn.ModuleList([BlockChunk(p) for p in chunked_blocks])
+                chunked_blocks.append([torch.nn.Identity()] * i + blocks_list[i : i + chunksize])
+            self.blocks = torch.nn.ModuleList([BlockChunk(p) for p in chunked_blocks])
         else:
             self.chunked_blocks = False
-            self.blocks = nn.ModuleList(blocks_list)
+            self.blocks = torch.nn.ModuleList(blocks_list)
 
         self.norm = norm_layer(embed_dim)
-        self.head = nn.Identity()
+        self.head = torch.nn.Identity()
 
-        self.mask_token = nn.Parameter(torch.zeros(1, embed_dim))
+        self.mask_token = torch.nn.Parameter(torch.zeros(1, embed_dim))
 
         self.init_weights()
 
     def init_weights(self):
-        trunc_normal_(self.pos_embed, std=0.02)
-        nn.init.normal_(self.cls_token, std=1e-6)
+        torch.nn.init.trunc_normal_(self.pos_embed, std=0.02)
+        torch.nn.init.normal_(self.cls_token, std=1e-6)
         if self.register_tokens is not None:
-            nn.init.normal_(self.register_tokens, std=1e-6)
+            torch.nn.init.normal_(self.register_tokens, std=1e-6)
         named_apply(init_weights_vit_timm, self)
 
     def interpolate_pos_encoding(self, x, w, h):
@@ -199,7 +196,7 @@ class DinoVisionTransformer(nn.Module):
         else:
             # Simply specify an output size instead of a scale factor
             kwargs["size"] = (w0, h0)
-        patch_pos_embed = nn.functional.interpolate(
+        patch_pos_embed = torch.nn.functional.interpolate(
             patch_pos_embed.reshape(1, M, M, dim).permute(0, 3, 1, 2),
             mode="bicubic",
             antialias=self.interpolate_antialias,
@@ -286,7 +283,7 @@ class DinoVisionTransformer(nn.Module):
         # If n is an int, take the n last blocks. If it's a list, take them
         blocks_to_take = range(total_block_len - n, total_block_len) if isinstance(n, int) else n
         for block_chunk in self.blocks:
-            for blk in block_chunk[i:]:  # Passing the nn.Identity()
+            for blk in block_chunk[i:]:  # Passing the torch.nn.Identity()
                 x = blk(x)
                 if i in blocks_to_take:
                     output.append(x)
@@ -328,12 +325,12 @@ class DinoVisionTransformer(nn.Module):
             return self.head(ret["x_norm_clstoken"])
 
 
-def init_weights_vit_timm(module: nn.Module, name: str = ""):
+def init_weights_vit_timm(module: torch.nn.Module, name: str = ""):
     """ViT weight initialization, original timm impl (for reproducibility)"""
-    if isinstance(module, nn.Linear):
-        trunc_normal_(module.weight, std=0.02)
+    if isinstance(module, torch.nn.Linear):
+        torch.nn.init.trunc_normal_(module.weight, std=0.02)
         if module.bias is not None:
-            nn.init.zeros_(module.bias)
+            torch.nn.init.zeros_(module.bias)
 
 
 def vit_small(patch_size=16, num_register_tokens=0, **kwargs):
