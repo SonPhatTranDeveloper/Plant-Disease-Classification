@@ -56,10 +56,11 @@ class ImageLabelDataset(Dataset):
 
         # Define augmentation transforms
         self.augment_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomRotation(15),
+            # transforms.RandomHorizontalFlip(p=0.5),
+            # transforms.RandomRotation(15),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            # transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            transforms.RandomErasing()
         ])
 
     def __len__(self):
