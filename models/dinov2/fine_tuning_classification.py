@@ -297,7 +297,7 @@ def evaluate(model, val_loader, criterion, device):
 
 
 class Dino(torch.nn.Module):
-    def __init__(self, type, device):
+    def __init__(self, type, device, num_classes):
         super().__init__()
         # get feature model
         model = torch.hub.load(
@@ -319,7 +319,7 @@ class Dino(torch.nn.Module):
             sample_output, use_n_blocks=1, use_avgpool=True
         ).shape[1]
         self.classifier = LinearClassifier(
-            out_dim, use_n_blocks=1, use_avgpool=True, num_classes=100
+            out_dim, use_n_blocks=1, use_avgpool=True, num_classes=num_classes
         ).to(device)
 
     def forward(self, x):
@@ -337,6 +337,9 @@ if __name__ == "__main__":
     test_pairs = load_image_label_pairs("raw_dataset/small/test", convert_label=lambda x: x)
     test_paths = [item[0] for item in test_pairs]
     test_labels = [item[1] for item in test_pairs]
+
+    # Get the total classes
+    total_classes = len(set(train_labels))
 
     # Create the train and test dataloader
     train_dataset = AugmentedDINOv2Dataset(
@@ -368,7 +371,7 @@ if __name__ == "__main__":
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    model = Dino("dinov2_vits14_reg", device)
+    model = Dino("dinov2_vits14_reg", device, total_classes)
 
     # Disable gradient for feature model
     for param in model.feature_model.parameters():
