@@ -287,7 +287,7 @@ def evaluate(model, val_loader, criterion, device):
 
             # Top-5 accuracy
             correct_top5 += sum([1 for i, label in enumerate(label_indices)
-                                 if label in predicted[i]]).item()
+                                 if label in predicted[i]])
 
     val_loss = running_loss / len(val_loader)
     val_acc_top1 = 100 * correct_top1 / total
