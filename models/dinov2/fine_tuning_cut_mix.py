@@ -35,17 +35,14 @@ def train_epoch(model, train_loader, criterion, optimizer, device, cut_mix_prob=
         # Zero the parameter gradients
         optimizer.zero_grad()
 
-        # Forward pass
-        outputs = model(inputs)
-
         # Calculate cut mix loss
         if np.random.rand() < cut_mix_prob:
-            data, target_a, target_b, lam = cut_mix_data(outputs, labels)
-            output = model(data)
-            loss = criterion(output, target_a) * lam + criterion(output, target_b) * (1. - lam)
+            data, target_a, target_b, lam = cut_mix_data(inputs, labels)
+            outputs = model(inputs)
+            loss = criterion(outputs, target_a) * lam + criterion(outputs, target_b) * (1. - lam)
         else:
-            output = model(outputs)
-            loss = criterion(output, labels)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
 
         # Backward pass and optimize
         loss.backward()
