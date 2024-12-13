@@ -84,6 +84,9 @@ def evaluate(model, val_loader, criterion, device):
             else:
                 inputs = inputs.to(device)
 
+            # Move labels to device
+            labels = labels.to(device)
+
             # Forward pass
             outputs = model(inputs)
             loss = criterion(outputs, labels)
