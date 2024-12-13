@@ -120,6 +120,9 @@ python models/blip/fine_tuning_classification.py
 
 ### DINOv2
 
+Download the ```ViT-L/14 distilled``` weights from https://github.com/facebookresearch/dinov2
+and place it in ```models/dinov2/weights``` folder.
+
 To run one-shot classification (k-nearest neighbors), please run
 ```bash
 python models/dinov2/one_shot.py
