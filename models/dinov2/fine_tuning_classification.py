@@ -11,7 +11,7 @@ from functools import partial
 from tqdm import tqdm
 
 from models.dinov2.layers.linear import create_linear_input, LinearClassifier, ModelWithIntermediateLayers
-from datasets.dinov2 import AugmentedDINOv2Dataset
+from datasets.dinov2 import AugmentedDINOv2Dataset, RANDOM_ERASING_TRANSFORM
 from utils.data import load_image_label_pairs
 
 
@@ -169,7 +169,8 @@ if __name__ == "__main__":
     test_dataset = AugmentedDINOv2Dataset(
         image_paths=test_paths,
         labels=test_labels,
-        num_augmentations=0
+        num_augmentations=0,
+        transform=RANDOM_ERASING_TRANSFORM
     )
 
     # Create dataloaders

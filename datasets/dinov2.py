@@ -50,6 +50,23 @@ STANDARD_TRANSFORM = T.Compose([
                 std=(0.229, 0.224, 0.225))
 ])
 
+CROP_ROTATION_TRANSFORM = T.Compose([
+    ResizeAndPad((256, 256), 14),
+    T.RandomHorizontalFlip(p=0.5),
+    T.RandomRotation(15),
+    T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+    T.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+    T.ToTensor(),
+    T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    # transforms.RandomErasing()
+])
+
+RANDOM_ERASING_TRANSFORM = T.Compose([
+    ResizeAndPad((256, 256), 14),
+    T.ToTensor(),
+    T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+])
+
 
 def load_one_shot_dataset(dataset_path: str) -> List[Tuple[str, str]]:
     """
@@ -147,7 +164,8 @@ class AugmentedDINOv2Dataset(Dataset):
             self,
             image_paths: List[Union[str, Image.Image]],
             labels: List[str],
-            num_augmentations: int = 1
+            num_augmentations: int = 1,
+            transform = CROP_ROTATION_TRANSFORM
     ):
         """
         Dataset for loading, preprocessing and augmenting images
@@ -162,22 +180,9 @@ class AugmentedDINOv2Dataset(Dataset):
         self.num_augmentations = num_augmentations
 
         # Define augmentation transforms
-        self.augment_transform = T.Compose([
-            ResizeAndPad((256, 256), 14),
-            T.RandomHorizontalFlip(p=0.5),
-            T.RandomRotation(15),
-            T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
-            T.RandomAffine(degrees=0, translate=(0.1, 0.1)),
-            T.ToTensor(),
-            T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            # transforms.RandomErasing()
-        ])
+        self.augment_transform = transform
 
-        self.based_transform = T.Compose([
-            ResizeAndPad((256, 256), 14),
-            T.ToTensor(),
-            T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-        ])
+        self.based_transform = STANDARD_TRANSFORM
 
         # Mapping from labels to number
         sorted_labels = list(sorted(list(set(labels))))
