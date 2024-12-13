@@ -28,6 +28,42 @@ def cut_mix_data(x, y, alpha=1.0):
     return x, y, y[rand_index], lam
 
 
+def mix_up_data(images, labels, alpha=1.0):
+    """
+    Performs MixUp augmentation on a batch of images.
+
+    Args:
+        images: Tensor of shape (batch_size, channels, height, width)
+        labels: Tensor of shape (batch_size)
+        alpha: Float parameter for beta distribution
+
+    Returns:
+        mixed_images: Augmented images
+        labels_a: Original labels
+        labels_b: Mixed in labels
+        lam: Mixing ratio
+    """
+    # Generate mixing weight from beta distribution
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    # Ensure lambda is compatible with GPU/CPU
+    lam = max(lam, 1 - lam)
+
+    # Get batch size
+    batch_size = images.size()[0]
+
+    # Generate random permutation for mixing
+    rand_index = torch.randperm(batch_size, device=images.device)
+
+    # Perform mix_up
+    mixed_images = lam * images + (1 - lam) * images[rand_index]
+
+    return mixed_images, labels, labels[rand_index], lam
+
+
 def rand_bbox(size, lam):
     """Generates random bounding box coordinates."""
     W = size[2]
