@@ -12,6 +12,7 @@ from torchvision.transforms.functional import InterpolationMode
 
 from PIL import Image
 
+
 class ResizeAndPad:
     def __init__(self, target_size, multiple):
         """
@@ -139,3 +140,78 @@ def create_dataloader(dataset_path: str, batch_size: int = 32, num_workers: int 
                             shuffle=False, num_workers=num_workers)
 
     return dataloader, labels
+
+
+class AugmentedDINOv2Dataset(Dataset):
+    def __init__(
+            self,
+            image_paths: List[Union[str, Image.Image]],
+            labels: List[str],
+            num_augmentations: int = 1
+    ):
+        """
+        Dataset for loading, preprocessing and augmenting images
+
+        Args:
+            image_paths: List of image paths or PIL Image objects
+            labels: List of labels
+            num_augmentations: Number of augmented copies to create per original image
+        """
+        self.image_paths = image_paths
+        self.labels = labels
+        self.num_augmentations = num_augmentations
+
+        # Define augmentation transforms
+        self.augment_transform = T.Compose([
+            ResizeAndPad((256, 256), 14),
+            T.RandomHorizontalFlip(p=0.5),
+            T.RandomRotation(15),
+            T.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+            T.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+            T.ToTensor(),
+            T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            # transforms.RandomErasing()
+        ])
+
+        self.based_transform = T.Compose([
+            ResizeAndPad((256, 256), 14),
+            T.ToTensor(),
+            T.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        ])
+
+        # Mapping from labels to number
+        sorted_labels = list(sorted(list(set(labels))))
+        self.label_mapping = {
+            label: index for index, label in enumerate(sorted_labels)
+        }
+
+    def __len__(self) -> int:
+        return len(self.image_paths) * (self.num_augmentations + 1)
+
+    def __getitem__(self, idx: int):
+        # Calculate which sample and which augmentation
+        original_idx = idx // (self.num_augmentations + 1)
+        aug_num = idx % (self.num_augmentations + 1)
+
+        # Get original image path/object and label
+        image = self.image_paths[original_idx]
+        label = self.labels[original_idx]
+
+        # Get mapping to label
+        label_index = self.label_mapping[label]
+
+        # Load image if it's a path
+        if isinstance(image, str):
+            temp = Image.open(image).convert('RGB')
+            image = temp.copy()
+            temp.close()
+
+        # If it's the original image (aug_num = 0)
+        if aug_num == 0:
+            return self.based_transform(image), label_index
+
+        # Apply augmentation for non-original images
+        image = self.augment_transform(image)
+
+        # Apply base transform if it exists
+        return image, label_index
