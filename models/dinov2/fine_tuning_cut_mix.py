@@ -1,7 +1,8 @@
 """
 Author: Son Phat Tran
-This code contains the code fine-tuning DINOv2, classification style.
+This code contains the code fine-tuning DINOv2 classification style with cut-mix.
 """
+import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -9,11 +10,12 @@ from functools import partial
 from tqdm import tqdm
 
 from models.dinov2.layers.linear import create_linear_input, LinearClassifier, ModelWithIntermediateLayers
-from datasets.dinov2 import AugmentedDINOv2Dataset, RANDOM_ERASING_TRANSFORM
+from datasets.dinov2 import AugmentedDINOv2Dataset, STANDARD_TRANSFORM
+from utils.augmentation import cut_mix_data
 from utils.data import load_image_label_pairs
 
 
-def train_epoch(model, train_loader, criterion, optimizer, device):
+def train_epoch(model, train_loader, criterion, optimizer, device, cut_mix_prob=0.5):
     model.train()
     running_loss = 0.0
     correct_top1 = 0
@@ -35,7 +37,15 @@ def train_epoch(model, train_loader, criterion, optimizer, device):
 
         # Forward pass
         outputs = model(inputs)
-        loss = criterion(outputs, labels)
+
+        # Calculate cut mix loss
+        if np.random.rand() < cut_mix_prob:
+            data, target_a, target_b, lam = cut_mix_data(outputs, labels)
+            output = model(data)
+            loss = criterion(output, target_a) * lam + criterion(output, target_b) * (1. - lam)
+        else:
+            output = model(outputs)
+            loss = criterion(output, labels)
 
         # Backward pass and optimize
         loss.backward()
@@ -158,7 +168,7 @@ if __name__ == "__main__":
         image_paths=test_paths,
         labels=test_labels,
         num_augmentations=0,
-        transform=RANDOM_ERASING_TRANSFORM
+        transform=STANDARD_TRANSFORM
     )
 
     # Create dataloaders
@@ -232,4 +242,3 @@ if __name__ == "__main__":
 
     print("Training completed!")
     print(f"Best validation accuracy: {best_acc:.2f}%")
-
