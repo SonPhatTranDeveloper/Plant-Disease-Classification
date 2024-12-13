@@ -140,9 +140,7 @@ def train_model(model, train_loader, val_loader, num_epochs, device):
             correct += predicted.eq(labels).sum().item()
 
             progress_bar.set_postfix({
-                'loss': f'{train_loss / len(train_loader):.3f}',
-                'acc': f'{100. * correct / total:.2f}%',
-                'lr': f'{scheduler.get_last_lr()[0]:.2e}'
+                'loss': f'{train_loss / len(train_loader):.3f}'
             })
 
         # Validation
