@@ -13,7 +13,7 @@ export PYTHONPATH=.
 ### Preparing the dataset
 
 Firstly, download the dataset from https://data.mendeley.com/datasets/tywbtsjrjv/1 (without augmentation) and extract it
-into ```raw_dataset``` folder with the following format:
+into ```raw_dataset``` folder in the root folder with the following format:
 ```
 raw_dataset
     full
