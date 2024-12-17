@@ -10,6 +10,13 @@ Firstly, run the following code before you start any training
 export PYTHONPATH=.
 ```
 
+### Installation
+
+```bash
+# Python 3.11
+pip install -r requirements.txt
+```
+
 ### Preparing the dataset
 
 Firstly, download the dataset from https://data.mendeley.com/datasets/tywbtsjrjv/1 (without augmentation) and extract it
