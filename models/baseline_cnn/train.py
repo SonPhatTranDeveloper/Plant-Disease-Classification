@@ -29,5 +29,5 @@ if __name__ == "__main__":
         optimizer,
         device="cuda" if torch.cuda.is_available() else "cpu",
         num_epochs=30,
-        save_path="weights/baseline_cnn.pth"
+        save_path="weights/best_baseline_cnn.pth"
     )
