@@ -157,7 +157,7 @@ def train_model(model, train_loader, val_loader, num_epochs, device):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'val_top1_acc': val_metrics["top1_accuracy"],
                 'val_top5_acc': val_metrics["top5_accuracy"],
-            }, 'best_model.pth')
+            }, 'weights/best_clip_classification_head.pth')
 
 
 if __name__ == "__main__":
