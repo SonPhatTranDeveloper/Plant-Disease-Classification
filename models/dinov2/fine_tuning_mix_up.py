@@ -236,7 +236,7 @@ if __name__ == "__main__":
         # Save best model
         if val_acc_top1 > best_acc:
             best_acc = val_acc_top1
-            torch.save(model.state_dict(), 'best_model.pth')
+            torch.save(model.state_dict(), 'weights/best_dino_mix_up.pth')
             print("Saved new best model")
 
     print("Training completed!")
