@@ -1,6 +1,7 @@
 """
 Author: Son Phat Tran
 This file contains the code for BLIP fine-tuning using a classification head
+Modified to use BlipForImageTextRetrieval
 """
 import numpy as np
 import torch
@@ -9,29 +10,30 @@ from torch import optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from transformers import BlipModel
+from transformers import BlipForImageTextRetrieval
 
 from utils.data import load_image_label_pairs
 from datasets.clip_classification_head import ImageLabelDataset, CROP_AND_ROTATION_TRANSFORM, NO_TRANSFORM
 
 
 class BLIPClassifier(nn.Module):
-    def __init__(self, num_classes, pretrained_model="Salesforce/blip-image-captioning-large"):
+    def __init__(self, num_classes, pretrained_model="Salesforce/blip-itm-base-coco"):
         super().__init__()
 
-        # Load pretrained CLIP model
-        self.blip = BlipModel.from_pretrained(pretrained_model)
+        # Load pretrained BLIP model
+        self.blip = BlipForImageTextRetrieval.from_pretrained(pretrained_model)
 
-        # Freeze CLIP parameters
+        # Freeze BLIP parameters
         for param in self.blip.parameters():
             param.requires_grad = False
 
         # Add classification head
+        # Using vision encoder output dimension (768 for base model)
         self.classifier = nn.Sequential(
-            nn.Linear(1024, 384),  # Reduced from input dim 768
-            nn.LayerNorm(384),  # Added LayerNorm for better stability
+            nn.Linear(768, 384),
+            nn.LayerNorm(384),
             nn.ReLU(),
-            nn.Dropout(0.3),  # Increased dropout for larger model
+            nn.Dropout(0.3),
             nn.Linear(384, 192),
             nn.ReLU(),
             nn.Dropout(0.2),
@@ -39,9 +41,9 @@ class BLIPClassifier(nn.Module):
         )
 
     def forward(self, pixel_values):
-        # Get vision encoder outputs
+        # Get vision encoder outputs - using the image encoder part only
         vision_outputs = self.blip.vision_model(pixel_values)
-        pooled_output = vision_outputs.pooler_output
+        pooled_output = vision_outputs[1]  # Get pooled output
 
         # Pass through classification head
         logits = self.classifier(pooled_output)
