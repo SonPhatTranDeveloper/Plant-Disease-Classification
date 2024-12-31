@@ -1,5 +1,7 @@
 # Low-Resource Plant Disease Classification with Foundation Models
 
+![Project Illustration](assets/Project.svg)
+
 ## Overview
 This repository contains the official implementation of our research paper "Low-Resource Plant Disease Classification with Foundation Models". We explore how various foundation models perform on plant disease classification tasks in low-resource settings, comparing traditional CNN approaches with modern foundation models like CLIP, BLIP, and DINOv2.
 

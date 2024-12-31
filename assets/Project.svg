@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+    <!-- Background -->
+    <rect width="800" height="500" fill="#ffffff"/>
+    
+    <!-- Dataset Section -->
+    <g transform="translate(50,40)">
+        <!-- Dataset Box -->
+        <rect x="0" y="0" width="200" height="180" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+        <text x="100" y="40" text-anchor="middle" font-family="Arial" font-size="16" fill="#1976d2" font-weight="bold">PlantVillage Dataset</text>
+        <text x="100" y="70" text-anchor="middle" font-family="Arial" font-size="12">54,306 Images</text>
+        <text x="100" y="90" text-anchor="middle" font-family="Arial" font-size="12">38 Classes</text>
+        
+        <!-- Low-resource sampling -->
+        <rect x="20" y="110" width="160" height="50" rx="5" fill="#bbdefb" stroke="#1976d2" stroke-width="1"/>
+        <text x="100" y="135" text-anchor="middle" font-family="Arial" font-size="12">Train: 10 images/class</text>
+        <text x="100" y="150" text-anchor="middle" font-family="Arial" font-size="12">Val: 20 images/class</text>
+    </g>
+
+    <!-- Arrow -->
+    <path d="M 270 130 L 340 130" fill="none" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Models Section -->
+    <g transform="translate(350,40)">
+        <rect x="0" y="0" width="200" height="180" rx="10" fill="#f3e5f5" stroke="#7b1fa2" stroke-width="2"/>
+        <text x="100" y="30" text-anchor="middle" font-family="Arial" font-size="16" fill="#7b1fa2" font-weight="bold">Foundation Models</text>
+        
+        <!-- Model boxes -->
+        <rect x="20" y="50" width="160" height="30" rx="5" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+        <text x="100" y="70" text-anchor="middle" font-family="Arial" font-size="14">CLIP</text>
+        
+        <rect x="20" y="90" width="160" height="30" rx="5" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+        <text x="100" y="110" text-anchor="middle" font-family="Arial" font-size="14">BLIP</text>
+        
+        <rect x="20" y="130" width="160" height="30" rx="5" fill="#e1bee7" stroke="#7b1fa2" stroke-width="1"/>
+        <text x="100" y="150" text-anchor="middle" font-family="Arial" font-size="14">DINOv2</text>
+    </g>
+
+    <!-- Arrow from Models to Training -->
+    <path d="M 450 220 L 450 270" fill="none" stroke="#7b1fa2" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Training Methods -->
+    <g transform="translate(350,280)">
+        <rect x="0" y="0" width="200" height="200" rx="10" fill="#fff3e0" stroke="#e65100" stroke-width="2"/>
+        <text x="100" y="35" text-anchor="middle" font-family="Arial" font-size="16" fill="#e65100" font-weight="bold">Training Methods</text>
+        
+        <rect x="20" y="55" width="160" height="30" rx="5" fill="#ffe0b2" stroke="#e65100" stroke-width="1"/>
+        <text x="100" y="75" text-anchor="middle" font-family="Arial" font-size="12">One-shot Classification</text>
+        
+        <rect x="20" y="100" width="160" height="30" rx="5" fill="#ffe0b2" stroke="#e65100" stroke-width="1"/>
+        <text x="100" y="120" text-anchor="middle" font-family="Arial" font-size="12">End-to-end Fine-tuning</text>
+
+        <rect x="20" y="145" width="160" height="30" rx="5" fill="#ffe0b2" stroke="#e65100" stroke-width="1"/>
+        <text x="100" y="165" text-anchor="middle" font-family="Arial" font-size="12">Classification Head</text>
+    </g>
+
+    <!-- Arrow to Results -->
+    <path d="M 570 130 L 640 130" fill="none" stroke="#1976d2" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+    <!-- Results Section -->
+    <g transform="translate(650,40)">
+        <rect x="0" y="0" width="120" height="180" rx="10" fill="#e8f5e9" stroke="#2e7d32" stroke-width="2"/>
+        <text x="60" y="30" text-anchor="middle" font-family="Arial" font-size="16" fill="#2e7d32" font-weight="bold">Results</text>
+        
+        <rect x="10" y="50" width="100" height="80" rx="5" fill="#c8e6c9" stroke="#2e7d32" stroke-width="1"/>
+        <text x="60" y="80" text-anchor="middle" font-family="Arial" font-size="12">Performance</text>
+        <text x="60" y="100" text-anchor="middle" font-family="Arial" font-size="12">Analysis</text>
+    </g>
+
+    <!-- Arrow definitions -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#1976d2"/>
+        </marker>
+    </defs>
+</svg>
